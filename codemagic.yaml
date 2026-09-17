@@ -9,9 +9,21 @@ workflows:
         script: flutter create --platforms=android --org com.ffsensai .
       - name: Add permissions
         script: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          grep -q "INTERNET" "$MANIFEST" || sed -i '/<manifest[^>]*>/a\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
-          grep -q "SYSTEM_ALERT_WINDOW" "$MANIFEST" || sed -i '/<manifest[^>]*>/a\    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>' "$MANIFEST"
+          python3 - << 'PYEOF'
+          import re
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path) as f:
+              content = f.read()
+          def ensure(c, name):
+              if name in c:
+                  return c
+              line = '    <uses-permission android:name="android.permission.' + name + '"/>\n'
+              return re.sub(r'(<manifest[^>]*>)', r'\1\n' + line, c, count=1)
+          content = ensure(content, "INTERNET")
+          content = ensure(content, "SYSTEM_ALERT_WINDOW")
+          with open(path, "w") as f:
+              f.write(content)
+          PYEOF
       - name: Get packages
         script: flutter pub get
       - name: Build APK
